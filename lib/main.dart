@@ -18,8 +18,12 @@ class ProductCatalogApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Product Catalog',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xFFF5F7F6),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF176B52),
+        ),
+        fontFamily: 'Roboto',
       ),
       home: const ProductListScreen(),
     );
@@ -48,6 +52,10 @@ class _ProductListScreenState extends State<ProductListScreen> {
   int skip = 0;
 
   Timer? _debounce;
+
+  static const Color primaryGreen = Color(0xFF176B52);
+  static const Color darkText = Color(0xFF17221E);
+  static const Color background = Color(0xFFF5F7F6);
 
   @override
   void initState() {
@@ -108,42 +116,45 @@ class _ProductListScreenState extends State<ProductListScreen> {
       _debounce!.cancel();
     }
 
-    _debounce = Timer(const Duration(milliseconds: 500), () async {
-      if (query.trim().isEmpty) {
+    _debounce = Timer(
+      const Duration(milliseconds: 500),
+      () async {
+        if (query.trim().isEmpty) {
+          setState(() {
+            isSearching = false;
+            products = [];
+            skip = 0;
+            hasMore = true;
+            isLoading = true;
+            errorMessage = null;
+          });
+
+          await loadProducts();
+          return;
+        }
+
         setState(() {
-          isSearching = false;
-          products = [];
-          skip = 0;
-          hasMore = true;
+          isSearching = true;
           isLoading = true;
           errorMessage = null;
         });
 
-        await loadProducts();
-        return;
-      }
+        try {
+          final results =
+              await productService.searchProducts(query.trim());
 
-      setState(() {
-        isSearching = true;
-        isLoading = true;
-        errorMessage = null;
-      });
-
-      try {
-        final results =
-            await productService.searchProducts(query.trim());
-
-        setState(() {
-          products = results;
-          isLoading = false;
-        });
-      } catch (e) {
-        setState(() {
-          errorMessage = 'Failed to search products';
-          isLoading = false;
-        });
-      }
-    });
+          setState(() {
+            products = results;
+            isLoading = false;
+          });
+        } catch (e) {
+          setState(() {
+            errorMessage = 'Failed to search products';
+            isLoading = false;
+          });
+        }
+      },
+    );
   }
 
   @override
@@ -156,37 +167,111 @@ class _ProductListScreenState extends State<ProductListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Product Catalog'),
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: TextField(
-              controller: searchController,
-              onChanged: searchProducts,
-              decoration: InputDecoration(
-                hintText: 'Search products...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          searchController.clear();
-                          searchProducts('');
-                          setState(() {});
-                        },
-                      )
-                    : null,
-                border: const OutlineInputBorder(),
+      backgroundColor: background,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // HEADER
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Welcome back',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        const Text(
+                          'Discover Products',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                            color: darkText,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: primaryGreen,
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: const Icon(
+                      Icons.person_outline_rounded,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-          Expanded(
-            child: buildBody(),
-          ),
-        ],
+
+            // SEARCH BAR
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 18),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 15,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: TextField(
+                  controller: searchController,
+                  onChanged: searchProducts,
+                  decoration: InputDecoration(
+                    hintText: 'Search products...',
+                    hintStyle: TextStyle(
+                      color: Colors.grey.shade500,
+                      fontSize: 15,
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      color: primaryGreen,
+                    ),
+                    suffixIcon: searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.close_rounded),
+                            onPressed: () {
+                              searchController.clear();
+                              searchProducts('');
+
+                              setState(() {});
+                            },
+                          )
+                        : null,
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: 17,
+                      horizontal: 10,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            Expanded(
+              child: buildBody(),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -194,7 +279,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
   Widget buildBody() {
     if (isLoading) {
       return const Center(
-        child: CircularProgressIndicator(),
+        child: CircularProgressIndicator(
+          color: primaryGreen,
+        ),
       );
     }
 
@@ -203,10 +290,28 @@ class _ProductListScreenState extends State<ProductListScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(errorMessage!),
-            const SizedBox(height: 10),
+            Icon(
+              Icons.cloud_off_rounded,
+              size: 55,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 15),
+            Text(
+              errorMessage!,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 15),
             ElevatedButton(
               onPressed: loadProducts,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryGreen,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
               child: const Text('Retry'),
             ),
           ],
@@ -216,11 +321,17 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
     if (products.isEmpty) {
       return const Center(
-        child: Text('No products found'),
+        child: Text(
+          'No products found',
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       );
     }
 
     return RefreshIndicator(
+      color: primaryGreen,
       onRefresh: refreshProducts,
       child: NotificationListener<ScrollNotification>(
         onNotification: (notification) {
@@ -233,47 +344,146 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
           return false;
         },
-        child: ListView.builder(
-          itemCount: products.length + (isLoadingMore ? 1 : 0),
+        child: GridView.builder(
+          padding: const EdgeInsets.fromLTRB(20, 5, 20, 30),
+          gridDelegate:
+              const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 14,
+            mainAxisSpacing: 14,
+            childAspectRatio: 0.70,
+          ),
+          itemCount: products.length + (isLoadingMore ? 2 : 0),
           itemBuilder: (context, index) {
-            if (index == products.length) {
-              return const Padding(
-                padding: EdgeInsets.all(16),
-                child: Center(
-                  child: CircularProgressIndicator(),
+            if (index >= products.length) {
+              return const Center(
+                child: CircularProgressIndicator(
+                  color: primaryGreen,
                 ),
               );
             }
 
             final product = products[index];
 
-            return ListTile(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ProductDetailScreen(
-                      product: product,
-                    ),
-                  ),
-                );
-              },
-              leading: Image.network(
-                product.thumbnail,
-                width: 60,
-                height: 60,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return const Icon(
-                    Icons.image_not_supported,
-                    size: 40,
-                  );
-                },
-              ),
-              title: Text(product.title),
-              subtitle: Text('\$${product.price}'),
-            );
+            return buildProductCard(product);
           },
+        ),
+      ),
+    );
+  }
+
+  Widget buildProductCard(Product product) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProductDetailScreen(
+              product: product,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 15,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // PRODUCT IMAGE
+            Expanded(
+              flex: 5,
+              child: Container(
+                width: double.infinity,
+                margin: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF2F5F4),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.network(
+                    product.thumbnail,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Icon(
+                        Icons.image_not_supported_outlined,
+                        size: 45,
+                        color: Colors.grey.shade400,
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+
+            // PRODUCT INFO
+            Expanded(
+              flex: 4,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: darkText,
+                        height: 1.25,
+                      ),
+                    ),
+
+                    const Spacer(),
+
+                    // RATING
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.star_rounded,
+                          size: 17,
+                          color: Colors.amber,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${product.rating}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 6),
+
+                    // PRICE
+                    Text(
+                      '\$${product.price}',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: primaryGreen,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

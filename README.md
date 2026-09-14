@@ -1,35 +1,31 @@
 # Product Catalog App
 
-A Flutter mobile application that displays products using the DummyJSON API.
+A Flutter product catalog application developed as part
+of the Junior Mobile Developer assessment.
 
 ## Features
 
-- Product listing with title, thumbnail and price
-- Pagination / load more when scrolling
-- Product detail screen
-- Product description, price, rating and images
-- Product search with debounce
-- Loading, error and empty states
-- Retry button for failed requests
-- Image error handling with placeholder icon
+- Product listing
+- Product search
+- Product details
+- Pagination / Load More
 - Pull-to-refresh
+- Error handling
+- Responsive UI
 
 ## Tech Stack
 
 - Flutter
 - Dart
-- DummyJSON REST API
-- HTTP package
+- REST API
+- DummyJSON
 
-## Architecture
+## API
 
-The application uses a simple two-layer structure:
+DummyJSON Product API
 
-```text
-lib/
-├── models/
-│   └── product.dart
-├── services/
-│   └── product_service.dart
-├── main.dart
-└── product_detail_screen.dart
+## How to Run
+
+1. Clone the repository
+2. Run flutter pub get
+3. Run flutter run
